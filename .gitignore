@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Secrets and Local Environment
+.env
+.env.local
+*.key
+*.pem
+serviceAccountKey.json
+
+# Android Build & Temporary Artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+.gradle/
+*.apk
+*.aab
+
+# Local runtime & test artifacts
+local_db.json
+emulator_screen*.png
+screenshot*.png
+test_*.png
+
+# macOS & Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
