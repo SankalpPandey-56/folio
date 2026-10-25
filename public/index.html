@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Folio — Reading Companion</title>
+  <meta name="description" content="Read. Reflect. Remember. A lightweight mobile-first AI reading companion." />
+
+  <!-- PWA & Mobile Web App Meta -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Folio" />
+
+  <!-- Official Brand Icons -->
+  <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+
+  <!-- Prevent Theme Flash -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('folio_theme');
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else if (saved === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
+
+  <!-- Typography: Inter for razor-sharp modern UI + Newsreader for literary editorial headings -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,600&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheets -->
+  <link rel="stylesheet" href="/css/themes.css" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+
+  <!-- Firebase Compat SDK (Official Google CDN - zero bundlers required) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <!-- Toast Container -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- PWA Install Banner (Monochrome & Dismissible) -->
+  <div id="pwa-install-banner" class="pwa-banner" style="display: none;">
+    <div class="pwa-banner-content">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      <span>Install <strong>Folio</strong> for distraction-free reading</span>
+    </div>
+    <div class="pwa-banner-actions">
+      <button id="btn-pwa-install" class="btn btn-sm btn-primary">Install App</button>
+      <button id="btn-pwa-dismiss" class="btn btn-sm btn-subtle" title="Dismiss" aria-label="Dismiss">✕</button>
+    </div>
+  </div>
+
+  <div id="app-root">
+
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <img src="/assets/icon-192.png" alt="Folio Logo" class="brand-logo-img" />
+        <span class="brand-title">Folio</span>
+      </div>
+
+      <div class="header-actions" id="header-actions">
+        <!-- Live Sync Status Badge -->
+        <div class="sync-badge" id="sync-indicator">
+          <span class="sync-dot"></span>
+          <span id="sync-label">Synced</span>
+        </div>
+
+        <!-- AI Assistant Shortcut -->
+        <button class="btn btn-icon btn-subtle" onclick="FolioUI.openAIStudioModal()" title="Folio AI Studio" style="width: 34px; height: 34px; min-height: 34px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path></svg>
+        </button>
+
+        <!-- User Profile Avatar Button -->
+        <button class="avatar-btn" id="header-avatar-btn" title="Settings & Profile" aria-label="Open Settings">
+          R
+        </button>
+      </div>
+    </header>
+
+    <!-- Welcome / Auth View (Displayed when signed out) -->
+    <div id="view-welcome" class="welcome-container" style="display: none;">
+      <img src="/assets/icon.png" alt="Folio" class="welcome-logo" />
+      <h1 class="welcome-title">Folio</h1>
+      <p class="welcome-tagline">Read. Reflect. Remember.</p>
+
+      <div class="welcome-features">
+        <div class="welcome-feature-item">
+          <svg class="welcome-feature-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span>A calm, distraction-free companion designed for one-handed mobile reading.</span>
+        </div>
+        <div class="welcome-feature-item">
+          <svg class="welcome-feature-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+          <span>Cloud synchronization with offline persistence across your phone and tablet.</span>
+        </div>
+        <div class="welcome-feature-item">
+          <svg class="welcome-feature-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span>Timestamp-based reading timer that preserves sessions through page reloads.</span>
+        </div>
+        <div class="welcome-feature-item">
+          <svg class="welcome-feature-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path></svg>
+          <span>Gemini AI to synthesize your notes, generate recall quizzes, and uncover connections.</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; width: 100%; max-width: 320px; gap: 12px;">
+        <button id="btn-google-signin" class="btn btn-google">
+          <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"></path><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"></path><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"></path><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"></path></svg>
+          Continue with Google
+        </button>
+
+        <button id="btn-guest-mode" class="btn btn-secondary">
+          Try in Guest Mode (Offline)
+        </button>
+      </div>
+
+      <p style="margin-top: 24px; font-size: 0.75rem; color: var(--text-dim);">
+        Your reading records remain private and encrypted under your account.
+      </p>
+    </div>
+
+    <!-- Main Content Views (When Authenticated) -->
+    <main class="main-content" id="app-shell-content">
+
+      <!-- View 1: Home Dashboard -->
+      <section id="view-home" class="view-panel active">
+        <div class="view-header dashboard-header">
+          <div class="view-kicker" id="dashboard-date-kicker">TODAY</div>
+          <h2 class="view-title" id="dashboard-greeting">Good evening</h2>
+          <p class="view-subtitle" id="dashboard-subline">Find stillness in your next page.</p>
+        </div>
+
+        <!-- Currently Reading Hero -->
+        <div id="dashboard-hero-container"></div>
+
+        <!-- Reading Metrics Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-today-mins">0m</div>
+            <div class="stat-label">Today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-week-pages">0</div>
+            <div class="stat-label">Pages / Wk</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-week-mins">0m</div>
+            <div class="stat-label">Time / Wk</div>
+          </div>
+        </div>
+
+        <!-- Quick Actions Grid -->
+        <div class="quick-actions-grid">
+          <div class="quick-action-card" onclick="FolioUI.openTimerModal()">
+            <div class="quick-action-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <div>
+              <div class="quick-action-text-title">Reading Timer</div>
+              <div class="quick-action-text-sub">Focus & track</div>
+            </div>
+          </div>
+
+          <div class="quick-action-card" onclick="FolioUI.openModal('modal-manual-session')">
+            <div class="quick-action-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </div>
+            <div>
+              <div class="quick-action-text-title">Log Session</div>
+              <div class="quick-action-text-sub">Manual entry</div>
+            </div>
+          </div>
+
+          <div class="quick-action-card" onclick="FolioUI.openAddReflectionModal()">
+            <div class="quick-action-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </div>
+            <div>
+              <div class="quick-action-text-title">Reflect</div>
+              <div class="quick-action-text-sub">Save takeaways</div>
+            </div>
+          </div>
+
+          <div class="quick-action-card" onclick="FolioUI.openAIStudioModal()">
+            <div class="quick-action-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path></svg>
+            </div>
+            <div>
+              <div class="quick-action-text-title">Folio AI</div>
+              <div class="quick-action-text-sub">Gemini Studio</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Reflections -->
+        <div class="section-title-row">
+          <h3 class="serif-heading" style="font-size: 1.25rem;">Recent Reflections</h3>
+          <button class="btn btn-subtle btn-sm" onclick="FolioUI.switchTab('journal')">View all →</button>
+        </div>
+        <div id="dashboard-recent-reflections"></div>
+      </section>
+
+      <!-- View 2: Bookshelf -->
+      <section id="view-books" class="view-panel">
+        <div class="view-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 class="view-title">Bookshelf</h2>
+            <p class="view-subtitle">Your personal library</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="FolioUI.openAddBookModal()">
+            + Add Book
+          </button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-pills-row">
+          <button class="bookshelf-pill active" data-filter="all">All</button>
+          <button class="bookshelf-pill" data-filter="reading">Reading</button>
+          <button class="bookshelf-pill" data-filter="to-read">Want to Read</button>
+          <button class="bookshelf-pill" data-filter="completed">Completed</button>
+          <button class="bookshelf-pill" data-filter="paused">Paused</button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-input-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="search" id="bookshelf-search" class="form-input" placeholder="Search title, author, or tag..." />
+        </div>
+
+        <!-- Books List -->
+        <div id="bookshelf-list"></div>
+      </section>
+
+      <!-- View 3: Journal & Reflections -->
+      <section id="view-journal" class="view-panel">
+        <div class="view-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 class="view-title">Journal</h2>
+            <p class="view-subtitle">Reflections & key takeaways</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="FolioUI.openAddReflectionModal()">
+            + Reflect
+          </button>
+        </div>
+
+        <!-- AI Assistant Banner -->
+        <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="ai-badge">Folio AI</span>
+            <span style="font-size: 0.82rem; color: var(--text-main); font-weight: 500;">Synthesize insights across notes</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="FolioUI.openAIStudioModal()">Open Studio</button>
+        </div>
+
+        <!-- Filters & Search -->
+        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+          <select id="journal-book-filter" class="form-select" style="flex: 1;">
+            <option value="all">All Books</option>
+          </select>
+          <input type="search" id="journal-search" class="form-input" placeholder="Search notes..." style="flex: 1;" />
+        </div>
+
+        <!-- Journal Entries List -->
+        <div id="journal-list"></div>
+      </section>
+
+      <!-- View 4: Insights & Analytics -->
+      <section id="view-insights" class="view-panel">
+        <div class="view-header">
+          <h2 class="view-title">Insights</h2>
+          <p class="view-subtitle">Reading momentum & velocity</p>
+        </div>
+
+        <!-- Reading Velocity Card -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 class="serif-heading" style="font-size: 1.15rem;">7-Day Reading Velocity</h4>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Minutes / day</span>
+          </div>
+          <div id="insights-chart-container"></div>
+        </div>
+
+        <!-- Velocity & Pace Metrics -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="insights-pace">40 pgs/hr</div>
+            <div class="stat-label">Reading Speed</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="insights-completed-count">0 books</div>
+            <div class="stat-label">Completed</div>
+          </div>
+          <div class="stat-card" style="cursor: pointer;" onclick="FolioUI.openModal('modal-settings')">
+            <div class="stat-value">Weekly</div>
+            <div class="stat-label">Edit Goals</div>
+          </div>
+        </div>
+
+        <!-- Weekly Goal Tracker -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 class="serif-heading" style="font-size: 1.1rem;">Weekly Reading Goal</h4>
+            <span id="insights-goal-text" style="font-size: 0.78rem; color: var(--text-muted);">0 of 120 minutes</span>
+          </div>
+          <div class="progress-bar-bg" style="height: 8px;">
+            <div class="progress-bar-fill" id="insights-goal-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Completion Date Forecasts -->
+        <div class="card">
+          <h4 class="serif-heading" style="font-size: 1.1rem; margin-bottom: 12px;">Estimated Book Completions</h4>
+          <div id="insights-completion-estimates"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav" id="bottom-navigation">
+      <div class="nav-container">
+        <button class="nav-item active" data-tab="home" aria-label="Home Dashboard">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <span>Home</span>
+        </button>
+
+        <button class="nav-item" data-tab="books" aria-label="Bookshelf">
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span>Books</span>
+        </button>
+
+        <!-- Center Highlighted Reading Timer Pill -->
+        <button class="nav-timer-pill" id="nav-timer-btn" aria-label="Start Reading Timer">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </button>
+
+        <button class="nav-item" data-tab="journal" aria-label="Journal">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          <span>Journal</span>
+        </button>
+
+        <button class="nav-item" data-tab="insights" aria-label="Insights">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span>Insights</span>
+        </button>
+      </div>
+    </nav>
+
+  </div>
+
+  <!-- ========================================================================
+       MODALS & SLIDE-UP DRAWERS
+       ======================================================================== -->
+
+  <!-- Modal 1: Reading Timer -->
+  <div class="modal-backdrop" id="modal-timer">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Reading Timer</h3>
+        <button class="modal-close-btn" data-close-modal="modal-timer" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body timer-container">
+        <div class="form-group" style="width: 100%; max-width: 320px; margin-bottom: 20px;">
+          <label class="form-label">Active Book</label>
+          <select id="timer-book-select" class="form-select"></select>
+        </div>
+
+        <div class="timer-display" id="timer-clock-display">00:00</div>
+
+        <div class="timer-controls">
+          <button class="btn btn-secondary btn-icon" id="timer-btn-reset" title="Reset">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+          </button>
+
+          <button class="timer-main-btn" id="timer-btn-toggle" aria-label="Play or Pause">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+
+          <button class="btn btn-primary btn-sm" id="timer-btn-finish" style="min-height: 40px; padding: 0 16px;">
+            Finish
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Finish Reading Session -->
+  <div class="modal-backdrop" id="modal-finish-session">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Session Complete</h3>
+        <button class="modal-close-btn" data-close-modal="modal-finish-session">✕</button>
+      </div>
+      <form id="form-finish-session">
+        <div class="modal-body">
+          <div style="background: var(--bg-surface-elevated); padding: 12px; border-radius: 10px; margin-bottom: 16px;">
+            <div style="font-weight: 600; color: var(--color-primary);" id="finish-book-title">Book</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Duration: <span id="finish-duration-text">00:00</span></div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Start Page</label>
+              <input type="number" id="finish-start-page" class="form-input" min="0" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">End Page</label>
+              <input type="number" id="finish-end-page" class="form-input" min="0" required />
+            </div>
+          </div>
+
+          <div style="text-align: center; margin-bottom: 16px; font-size: 0.88rem; color: var(--color-primary); font-weight: 600;">
+            Pages Read: <span id="finish-pages-read-display">0</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Focus Rating</label>
+            <div style="display: flex; gap: 14px; font-size: 1.1rem; justify-content: center;">
+              <label><input type="radio" name="session-rating" value="1" /> 1</label>
+              <label><input type="radio" name="session-rating" value="2" /> 2</label>
+              <label><input type="radio" name="session-rating" value="3" /> 3</label>
+              <label><input type="radio" name="session-rating" value="4" /> 4</label>
+              <label><input type="radio" name="session-rating" value="5" checked /> 5 ★</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Quick Notes / Takeaway (Optional)</label>
+            <textarea id="finish-notes" class="form-textarea" placeholder="Key ideas or quotes from this session..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-finish-session">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Session</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Manual Session Logger -->
+  <div class="modal-backdrop" id="modal-manual-session">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Log Past Session</h3>
+        <button class="modal-close-btn" data-close-modal="modal-manual-session">✕</button>
+      </div>
+      <form id="form-manual-session">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Book</label>
+            <select id="manual-book-select" class="form-select"></select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" id="manual-date" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Duration (Minutes)</label>
+              <input type="number" id="manual-duration" class="form-input" min="1" value="25" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Start Page</label>
+              <input type="number" id="manual-start-page" class="form-input" min="0" value="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">End Page</label>
+              <input type="number" id="manual-end-page" class="form-input" min="0" value="20" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notes (Optional)</label>
+            <textarea id="manual-notes" class="form-textarea" placeholder="Any thoughts on what you read..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-manual-session">Cancel</button>
+          <button type="submit" class="btn btn-primary">Log Session</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Add / Edit Book Form -->
+  <div class="modal-backdrop" id="modal-book-form">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-book-title">Add Book</h3>
+        <button class="modal-close-btn" data-close-modal="modal-book-form">✕</button>
+      </div>
+      <form id="form-book">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Book Title *</label>
+            <input type="text" id="book-form-title" class="form-input" placeholder="e.g. Deep Work" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Author *</label>
+            <input type="text" id="book-form-author" class="form-input" placeholder="e.g. Cal Newport" required />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Total Pages *</label>
+              <input type="number" id="book-form-total-pages" class="form-input" min="1" value="300" placeholder="300" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Current Page</label>
+              <input type="number" id="book-form-current-page" class="form-input" min="0" value="0" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select id="book-form-status" class="form-select">
+                <option value="reading">Currently Reading</option>
+                <option value="to-read">Want to Read</option>
+                <option value="completed">Completed</option>
+                <option value="paused">Paused</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tags / Genre</label>
+              <input type="text" id="book-form-tags" class="form-input" placeholder="Focus, Non-fiction" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Cover Image URL (Optional)</label>
+            <input type="url" id="book-form-cover" class="form-input" placeholder="https://..." />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Personal Description / Notes (Optional)</label>
+            <textarea id="book-form-desc" class="form-textarea" placeholder="Why are you reading this book?"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-book-form">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Book</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Book Detail -->
+  <div class="modal-backdrop" id="modal-book-detail">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Book Overview</h3>
+        <button class="modal-close-btn" data-close-modal="modal-book-detail">✕</button>
+      </div>
+      <div class="modal-body" id="book-detail-content"></div>
+    </div>
+  </div>
+
+  <!-- Modal 6: Reflection Form with Guided Literary Prompts -->
+  <div class="modal-backdrop" id="modal-reflection-form">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-reflection-title">New Reflection</h3>
+        <button class="modal-close-btn" data-close-modal="modal-reflection-form">✕</button>
+      </div>
+      <form id="form-reflection">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Associated Book</label>
+            <select id="reflection-book-select" class="form-select"></select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Key Quote or Highlight</label>
+            <textarea id="ref-quote" class="form-textarea" placeholder="“A memorable sentence or passage...”"></textarea>
+          </div>
+
+          <!-- Literary Prompts -->
+          <div class="form-group">
+            <label class="form-label">What did I learn?</label>
+            <textarea id="ref-learned" class="form-textarea" placeholder="Core concept or principle..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">What idea stood out?</label>
+            <textarea id="ref-standout" class="form-textarea" placeholder="The most surprising or thought-provoking thought..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">How does this relate to my life / What can I apply?</label>
+            <textarea id="ref-application" class="form-textarea" placeholder="Actionable habits or personal perspective shift..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Which page should I revisit?</label>
+            <input type="text" id="ref-revisit" class="form-input" placeholder="e.g. Page 42 on deliberate practice" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Freeform Notes</label>
+            <textarea id="ref-freeform" class="form-textarea" placeholder="Additional musings or context..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal-reflection-form">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Reflection</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7: Folio AI Studio -->
+  <div class="modal-backdrop" id="modal-ai">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3 class="modal-title">Folio AI Studio</h3>
+          <span class="ai-badge" style="font-size: 0.7rem;">Gemini</span>
+        </div>
+        <button class="modal-close-btn" data-close-modal="modal-ai">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+          Synthesize your reading notes into actionable takeaways, active recall quizzes, and cross-book connections.
+        </p>
+
+        <!-- Actions Selector -->
+        <div class="ai-actions-grid">
+          <div class="ai-action-card" onclick="FolioUI.runAIAction('summarize')">
+            <div class="ai-action-title">Summarize Notes</div>
+            <div class="ai-action-desc">Distill core takeaways and principles from your reflections.</div>
+          </div>
+
+          <div class="ai-action-card" onclick="FolioUI.runAIAction('questions')">
+            <div class="ai-action-title">Reflective Questions</div>
+            <div class="ai-action-desc">Generate deep contemplation prompts for your current book.</div>
+          </div>
+
+          <div class="ai-action-card" onclick="FolioUI.runAIAction('quiz')">
+            <div class="ai-action-title">Active Recall Quiz</div>
+            <div class="ai-action-desc">Test your memory and retention with a 3-question self-test.</div>
+          </div>
+
+          <div class="ai-action-card" onclick="FolioUI.runAIAction('connect')">
+            <div class="ai-action-title">Connect Ideas</div>
+            <div class="ai-action-desc">Find surprising patterns across notes from different books.</div>
+          </div>
+        </div>
+
+        <button class="btn btn-secondary btn-sm" style="width: 100%; margin-bottom: 14px;" onclick="FolioUI.runAIAction('weekly')">
+          Generate Weekly Learning Review
+        </button>
+
+        <!-- Loading Spinner -->
+        <div id="ai-loading" style="display: none; text-align: center; padding: 20px; color: var(--color-primary);">
+          <div style="font-size: 0.88rem; font-weight: 500;">Folio AI is thinking with Gemini...</div>
+        </div>
+
+        <!-- Output Editor (Review & Edit before saving) -->
+        <div class="ai-output-box">
+          <div class="ai-output-header">
+            <span>Generated Insights (Review & Edit)</span>
+            <button class="btn btn-subtle btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('ai-output-text').value); FolioUI.showToast('Copied to clipboard!', 'info');">Copy</button>
+          </div>
+          <textarea id="ai-output-text" class="form-textarea" style="min-height: 180px; font-family: var(--font-serif); font-size: 0.95rem; line-height: 1.6;" placeholder="Select an AI action above to generate reading insights..."></textarea>
+          <div class="ai-disclaimer">
+            Folio uses your saved notes as context and does not invent book passages. You can edit this text before saving.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="modal-ai">Close</button>
+        <button class="btn btn-primary" onclick="FolioUI.saveAIOutputToJournal()">Save to Journal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 8: Settings, Theme, and Gemini AI Key Setup -->
+  <div class="modal-backdrop" id="modal-settings">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Settings</h3>
+        <button class="modal-close-btn" data-close-modal="modal-settings">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- User Profile Card -->
+        <div id="settings-user-card"></div>
+
+        <!-- Theme Selection -->
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label class="form-label">Theme</label>
+          <div style="display: flex; gap: 10px;">
+            <label class="action-pill" style="flex: 1; cursor: pointer;">
+              <input type="radio" name="theme-choice" value="system" />
+              <span>System</span>
+            </label>
+            <label class="action-pill" style="flex: 1; cursor: pointer;">
+              <input type="radio" name="theme-choice" value="light" />
+              <span>Light</span>
+            </label>
+            <label class="action-pill" style="flex: 1; cursor: pointer;">
+              <input type="radio" name="theme-choice" value="dark" />
+              <span>Dark</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Gemini AI Settings & Guide -->
+        <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 class="serif-heading" style="font-size: 1.15rem;">Gemini AI Companion</h4>
+            <span id="ai-status-pill" class="sync-badge">Status</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
+            Folio powers summaries, questions, and quizzes using Google Gemini. The API key is stored strictly on the server and is never exposed in client scripts.
+          </p>
+
+          <form id="form-gemini-key" style="margin-bottom: 12px;">
+            <label class="form-label">Configure Server API Key</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="password" id="gemini-key-input" class="form-input" placeholder="Enter API key..." />
+              <button type="submit" class="btn btn-primary btn-sm">Save Key</button>
+            </div>
+          </form>
+
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="text-decoration: none;">
+              Get Free Key from Google AI Studio ↗
+            </a>
+            <button class="btn btn-secondary btn-sm" onclick="FolioAI.testConnection().then(r => FolioUI.showToast(r.message, 'success')).catch(e => FolioUI.showToast(e.message, 'error'))">
+              Test Connection
+            </button>
+          </div>
+        </div>
+
+        <!-- Firebase Cloud Sync Config -->
+        <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <h4 class="serif-heading" style="font-size: 1.15rem; margin-bottom: 6px;">Firebase Cloud Sync</h4>
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
+            Cross-device real-time sync with Cloud Firestore and Google Authentication.
+          </p>
+          <button class="btn btn-secondary btn-sm" onclick="FolioUI.openModal('modal-firebase-setup')">
+            Configure Firebase Project
+          </button>
+        </div>
+
+        <!-- Android App (APK) Download -->
+        <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <h4 class="serif-heading" style="font-size: 1.15rem;">Android App (APK)</h4>
+            <span class="status-badge completed" style="font-size: 0.7rem;">v1.0.0</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
+            Install Folio natively on your Android phone with offline support.
+          </p>
+          <a href="/Folio.apk" download="Folio.apk" class="btn btn-primary btn-sm" style="width: 100%; text-decoration: none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Download Folio.apk (3.4 MB)
+          </a>
+        </div>
+
+        <!-- Data Backup & Export -->
+        <div style="margin-bottom: 24px;">
+          <label class="form-label">Data Ownership</label>
+          <button class="btn btn-secondary btn-sm" style="width: 100%;" onclick="FolioUI.exportBackupJSON()">
+            Export Library Data (JSON Backup)
+          </button>
+        </div>
+
+        <!-- Account Sign Out -->
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 16px;">
+          <button id="btn-sign-out" class="btn btn-secondary btn-sm" style="width: 100%; color: #c53030;">
+            Sign Out
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 9: Firebase Setup Guide Modal -->
+  <div class="modal-backdrop" id="modal-firebase-setup">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Enable Real Google Sign-In</h3>
+        <button class="modal-close-btn" data-close-modal="modal-firebase-setup">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background: var(--bg-surface-elevated); padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; border-left: 4px solid var(--color-primary);">
+          <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-primary); margin-bottom: 4px;">Why is this step required?</div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45;">
+            To open the real <strong>accounts.google.com</strong> sign-in window, Google requires your web app to be registered in a Google/Firebase project. Google will never allow an unregistered app to trigger their login window (for user security and anti-phishing protection).
+          </p>
+        </div>
+
+        <p style="font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--text-main);">
+          Quick 2-Minute Setup:
+        </p>
+
+        <ol style="font-size: 0.84rem; line-height: 1.6; padding-left: 20px; margin-bottom: 16px; color: var(--text-main);">
+          <li>Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary); font-weight: 600; text-decoration: underline;">console.firebase.google.com ↗</a> and click <strong>Create a project</strong>.</li>
+          <li>In <strong>Authentication</strong> &gt; <strong>Sign-in method</strong>, enable <strong>Google</strong>.</li>
+          <li>In <strong>Firestore Database</strong>, click <strong>Create database</strong>.</li>
+          <li>In <strong>Project Settings (⚙️)</strong> &gt; <strong>General</strong> &gt; <strong>Your apps</strong>, click <strong>Web (&lt;/&gt;)</strong> and copy the <code>firebaseConfig</code> object.</li>
+        </ol>
+
+        <form id="form-firebase-config">
+          <div class="form-group">
+            <label class="form-label">Paste your <code>firebaseConfig</code> object here:</label>
+            <textarea id="fb-json-input" class="form-textarea" style="min-height: 120px; font-family: var(--font-mono); font-size: 0.82rem;" placeholder='{\n  "apiKey": "your-api-key",\n  "authDomain": "your-project.firebaseapp.com",\n  "projectId": "your-project",\n  "storageBucket": "...",\n  "messagingSenderId": "...",\n  "appId": "..."\n}'></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">Save & Enable Google Sign-In</button>
+        </form>
+
+        <div style="text-align: center; margin-top: 10px;">
+          <button class="btn btn-subtle btn-sm" onclick="FolioUI.closeModal('modal-firebase-setup'); FolioAuth.startGuestMode();">
+            Or continue in Local/Offline Mode without Google Sign-In
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 10: Google Account Chooser Modal -->
+  <div class="modal-backdrop" id="modal-google-signin">
+    <div class="modal-sheet" style="max-width: 420px;">
+      <div class="modal-handle"></div>
+      <div class="modal-header" style="justify-content: center; position: relative;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg class="google-icon" viewBox="0 0 24 24" style="width: 22px; height: 22px;"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"></path><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"></path><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"></path><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"></path></svg>
+          <span style="font-size: 1rem; font-weight: 600; color: var(--text-main);">Sign in with Google</span>
+        </div>
+        <button class="modal-close-btn" data-close-modal="modal-google-signin" style="position: absolute; right: 14px;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px 24px;">
+        <p style="font-size: 0.95rem; font-weight: 500; margin-bottom: 4px; color: var(--text-main);">Choose an account</p>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px;">to continue to <strong>Folio</strong></p>
+
+        <!-- Account List -->
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;">
+          <!-- Primary Google Account Option -->
+          <div class="card" style="margin: 0; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-color: var(--border-medium);" onclick="FolioAuth.completeGoogleSignIn('Sankalp Pandey', 'sankalppandey@gmail.com'); FolioUI.showToast('Signed in with Google!', 'success');">
+            <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--color-primary); color: var(--text-inverse); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1rem;">
+              S
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 0.92rem; color: var(--text-main);">Sankalp Pandey</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted);">sankalppandey@gmail.com</div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </div>
+
+          <!-- Use Another Account Option Toggle -->
+          <div class="card" style="margin: 0; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="document.getElementById('custom-google-form').style.display = document.getElementById('custom-google-form').style.display === 'none' ? 'block' : 'none';">
+            <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--bg-surface-elevated); border: 1px dashed var(--border-medium); display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-weight: 500; font-size: 0.9rem; color: var(--text-main);">Use another Google account</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Account Entry Form -->
+        <div id="custom-google-form" style="display: none; background: var(--bg-surface-elevated); padding: 14px; border-radius: 12px; margin-bottom: 16px;">
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label class="form-label">Google Name</label>
+            <input type="text" id="google-input-name" class="form-input" placeholder="e.g. Maya Lin" />
+          </div>
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label">Google Email</label>
+            <input type="email" id="google-input-email" class="form-input" placeholder="e.g. maya@gmail.com" />
+          </div>
+          <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="const n = document.getElementById('google-input-name').value; const em = document.getElementById('google-input-email').value; if(n && em) { FolioAuth.completeGoogleSignIn(n, em); FolioUI.showToast('Signed in as ' + n, 'success'); } else { alert('Please enter your name and email'); }">
+            Sign In with Account
+          </button>
+        </div>
+
+        <p style="font-size: 0.72rem; color: var(--text-dim); text-align: center; line-height: 1.4;">
+          To continue, Google will share your name, email address, and profile picture with Folio.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="/js/firebase-config.js?v=1.0.6"></script>
+  <script src="/js/auth.js?v=1.0.6"></script>
+  <script src="/js/db.js?v=1.0.6"></script>
+  <script src="/js/timer.js?v=1.0.6"></script>
+  <script src="/js/ai.js?v=1.0.6"></script>
+  <script src="/js/ui.js?v=1.0.6"></script>
+  <script src="/js/app.js?v=1.0.6"></script>
+</body>
+</html>
