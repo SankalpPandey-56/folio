@@ -7,7 +7,7 @@
 const FolioDB = (() => {
   let books = [];
   let sessions = [];
-  // let reflections = [];
+  let reflections = [];
   let preferences = {
     theme: 'system',
     weeklyGoalMinutes: 120,
