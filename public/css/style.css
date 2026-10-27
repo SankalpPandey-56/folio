@@ -93,6 +93,10 @@ html, body {
   transition: opacity var(--transition-fast);
 }
 
+.brand-wrapper > * + * {
+  margin-left: 10px;
+}
+
 .brand-wrapper:active {
   opacity: 0.8;
 }
@@ -120,6 +124,10 @@ html, body {
   gap: 8px;
 }
 
+.header-actions > * + * {
+  margin-left: 8px;
+}
+
 /* Sync Indicator Badge */
 .sync-badge {
   display: inline-flex;
@@ -136,6 +144,10 @@ html, body {
   transition: all var(--transition-fast);
   max-width: 105px;
   white-space: nowrap;
+}
+
+.sync-badge > * + * {
+  margin-left: 5px;
 }
 
 .sync-badge span:last-child {
@@ -311,6 +323,11 @@ html, body {
   min-height: 48px; /* Accessible 48px touch target */
   background: none;
   border: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
   color: var(--text-muted);
   font-family: var(--font-sans);
   font-size: 0.72rem;
@@ -318,6 +335,12 @@ html, body {
   cursor: pointer;
   gap: 3px;
   transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.nav-item:focus,
+.nav-item:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .nav-item:active {
@@ -393,18 +416,4 @@ html, body {
     max-width: 520px;
     border-radius: 20px 20px 0 0;
   }
-}
-
-.nav-item {
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.nav-item:focus,
-.nav-item:focus-visible {
-  outline: none;
-  box-shadow: none;
 }
