@@ -24,6 +24,10 @@
   user-select: none;
 }
 
+.btn > * + * {
+  margin-left: 8px;
+}
+
 .btn:active {
   transform: scale(0.97);
 }
@@ -169,6 +173,10 @@
   color: var(--text-dim);
 }
 
+.hero-kicker-badge > * + * {
+  margin-left: 6px;
+}
+
 .reading-pulse-dot {
   width: 6px;
   height: 6px;
@@ -188,6 +196,10 @@
   display: flex;
   align-items: center;
   gap: 18px;
+}
+
+.hero-main-row > * + * {
+  margin-left: 18px;
 }
 
 .book-cover-thumb {
@@ -315,6 +327,10 @@
   align-items: center;
 }
 
+.hero-actions-row > * + * {
+  margin-left: 10px;
+}
+
 .hero-btn-continue {
   flex: 1;
   min-height: 44px;
@@ -406,6 +422,10 @@
   transition: transform var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
   box-shadow: var(--shadow-sm);
   user-select: none;
+}
+
+.quick-action-card > * + * {
+  margin-left: 12px;
 }
 
 .quick-action-card:active {
@@ -506,6 +526,10 @@
   scrollbar-width: none;
 }
 
+.filter-pills-row > * + * {
+  margin-left: 8px;
+}
+
 .filter-pills-row::-webkit-scrollbar {
   display: none;
 }
@@ -570,6 +594,10 @@
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.bookshelf-card > * + * {
+  margin-left: 16px;
 }
 
 .bookshelf-card:active {
@@ -731,6 +759,10 @@
   gap: 12px;
 }
 
+.form-row > * + * {
+  margin-left: 12px;
+}
+
 .form-row > * {
   flex: 1;
 }
@@ -802,6 +834,14 @@
   overflow: hidden;
 }
 
+.modal-sheet > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .modal-backdrop.open .modal-sheet {
   transform: translateY(0);
 }
@@ -868,6 +908,10 @@
   background-color: var(--bg-surface);
 }
 
+.modal-footer > * + * {
+  margin-left: 12px;
+}
+
 @media (min-width: 768px) {
   .modal-backdrop {
     align-items: center;
@@ -924,6 +968,10 @@
   gap: 16px;
   align-items: center;
   justify-content: center;
+}
+
+.timer-controls > * + * {
+  margin-left: 16px;
 }
 
 .timer-main-btn {
@@ -1127,12 +1175,4 @@
 @keyframes slide-toast {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-.modal-sheet > form {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
